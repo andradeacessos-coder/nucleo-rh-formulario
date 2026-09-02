@@ -241,124 +241,190 @@ const auth = firebase.auth();
 /* Estrutura fiel do "Formulário de Recrutamento e Seleção — Núcleo RH" */
 /* ------------------------------------------------------------------ */
 
+const ESCOLARIDADE_TIER = {
+  "Fundamental incompleto": 1,
+  "Fundamental completo": 1,
+  "Médio incompleto": 1,
+  "Médio completo": 2,
+  "Técnico": 2,
+  "Superior cursando": 3,
+  "Superior completo": 3,
+  "Pós-graduação / MBA": 3,
+  "Mestrado ou Doutorado": 3
+};
+
+function getTier(){
+  return ESCOLARIDADE_TIER[state.escolaridade] || 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Formulário dinâmico Núcleo RH — se adapta pela escolaridade:        */
+/* tier 0 = sempre visível (antes de responder escolaridade)           */
+/* tier 1 = liberado a partir do Fundamental/Médio incompleto (básico) */
+/* tier 2 = liberado a partir do Médio completo / Técnico              */
+/* tier 3 = liberado a partir de Superior em diante (completo)         */
+/* ------------------------------------------------------------------ */
+
 const SECOES = [
   {
-    id: "s1", titulo: "1. Dados pessoais",
+    id: "s0", titulo: "Identificação",
     campos: [
-      {k:"nome", label:"Nome completo", tipo:"text", req:true},
-      {k:"nomeSocial", label:"Nome social (se houver)", tipo:"text"},
-      {k:"dataNascimento", label:"Data de nascimento", tipo:"date"},
-      {k:"idade", label:"Idade", tipo:"number"},
-      {k:"rg", label:"RG", tipo:"text"},
-      {k:"cpf", label:"CPF", tipo:"text"},
-      {k:"telefone", label:"Telefone", tipo:"tel"},
-      {k:"whatsapp", label:"WhatsApp", tipo:"tel", req:true},
-      {k:"email", label:"E-mail", tipo:"email"},
-      {k:"endereco", label:"Endereço", tipo:"text"},
-      {k:"bairro", label:"Bairro", tipo:"text"},
-      {k:"cidade", label:"Cidade", tipo:"text"},
-      {k:"uf", label:"UF", tipo:"text"},
-      {k:"cep", label:"CEP", tipo:"text"},
-      {k:"estadoCivil", label:"Estado civil", tipo:"radio", opcoes:["Solteiro(a)","Casado(a) / União estável","Divorciado(a)","Viúvo(a)"]},
-      {k:"possuiFilhos", label:"Possui filhos?", tipo:"radio", opcoes:["Não","Sim"]},
-      {k:"filhosDetalhe", label:"Se sim — quantos e idades", tipo:"text", showIf:["possuiFilhos","Sim"]},
-      {k:"pcd", label:"Pessoa com deficiência (PcD)", tipo:"radio", opcoes:["Não","Sim — especificar","Prefiro não informar"]},
-      {k:"pcdDetalhe", label:"Especificar", tipo:"text", showIf:["pcd","Sim — especificar"]},
-      {k:"comoConheceu", label:"Como conheceu a Núcleo RH?", tipo:"radio", opcoes:["Indicação","Redes sociais","Site / portal de vagas","Já foi candidato","Anúncio presencial","Outro"]},
-      {k:"comoConheceuOutro", label:"Outro — qual?", tipo:"text", showIf:["comoConheceu","Outro"]}
+      {k:"nome", label:"Nome completo", tipo:"text", req:true, tier:0},
+      {k:"whatsapp", label:"WhatsApp", tipo:"tel", req:true, tier:0},
+      {k:"dataNascimento", label:"Data de nascimento", tipo:"date", tier:0},
+      {k:"bairro", label:"Bairro", tipo:"text", tier:0},
+      {k:"cidade", label:"Cidade", tipo:"text", tier:0},
+      {k:"escolaridade", label:"Escolaridade (nível mais alto)", tipo:"radio", req:true, tier:0,
+        opcoes:["Fundamental incompleto","Fundamental completo","Médio incompleto","Médio completo","Técnico","Superior cursando","Superior completo","Pós-graduação / MBA","Mestrado ou Doutorado"]}
     ]
   },
   {
-    id:"s2", titulo:"2. Formação acadêmica e qualificação",
-    campos:[
-      {k:"escolaridade", label:"Escolaridade (nível mais alto)", tipo:"radio", opcoes:["Fundamental incompleto","Fundamental completo","Médio incompleto","Médio completo","Técnico","Superior cursando","Superior completo","Pós-graduação / MBA","Mestrado ou Doutorado"]},
-      {k:"cursoPrincipal", label:"Curso / formação principal", tipo:"text"},
-      {k:"instituicao", label:"Instituição", tipo:"text"},
-      {k:"anoConclusao", label:"Ano de conclusão (ou previsão)", tipo:"text"},
-      {k:"cursosComplementares", label:"Cursos complementares e certificações", tipo:"textarea"},
-      {k:"informatica", label:"Conhecimentos de informática", tipo:"grid",
+    id: "s1c", titulo: "Dados complementares",
+    tier: 2,
+    campos: [
+      {k:"nomeSocial", label:"Nome social (se houver)", tipo:"text", tier:3},
+      {k:"rg", label:"RG", tipo:"text", tier:2},
+      {k:"cpf", label:"CPF", tipo:"text", tier:2},
+      {k:"telefone", label:"Telefone", tipo:"tel", tier:2},
+      {k:"email", label:"E-mail", tipo:"email", tier:2},
+      {k:"endereco", label:"Endereço", tipo:"text", tier:2},
+      {k:"uf", label:"UF", tipo:"text", tier:2},
+      {k:"cep", label:"CEP", tipo:"text", tier:2},
+      {k:"estadoCivil", label:"Estado civil", tipo:"radio", tier:2, opcoes:["Solteiro(a)","Casado(a) / União estável","Divorciado(a)","Viúvo(a)"]},
+      {k:"possuiFilhos", label:"Possui filhos?", tipo:"radio", tier:2, opcoes:["Não","Sim"]},
+      {k:"filhosDetalhe", label:"Se sim — quantos e idades", tipo:"text", tier:2, showIf:["possuiFilhos","Sim"]},
+      {k:"pcd", label:"Pessoa com deficiência (PcD)", tipo:"radio", tier:2, opcoes:["Não","Sim — especificar","Prefiro não informar"]},
+      {k:"pcdDetalhe", label:"Especificar", tipo:"text", tier:2, showIf:["pcd","Sim — especificar"]},
+      {k:"comoConheceu", label:"Como conheceu a Núcleo RH?", tipo:"radio", tier:2, opcoes:["Indicação","Redes sociais","Site / portal de vagas","Já foi candidato","Anúncio presencial","Outro"]},
+      {k:"comoConheceuOutro", label:"Outro — qual?", tipo:"text", tier:2, showIf:["comoConheceu","Outro"]}
+    ]
+  },
+  {
+    id: "s2", titulo: "2. Área de interesse e função pretendida",
+    tier: 1,
+    campos: [
+      {k:"areaInteresse", label:"Em qual área você gostaria de trabalhar? (marque até 2)", tipo:"checkbox", max:2, tier:1, opcoes:[
+        "Alimentos e Bebidas (Restaurante, Bar e Cozinha)","Hotelaria e Hospedagem","Limpeza, Lavanderia e Serviços Gerais","Manutenção e Construção",
+        "Comercial, Vendas e Caixa","Administrativo e Recursos Humanos","Logística e Transporte","Segurança e Eventos",
+        "Turismo, Entretenimento e Mídia","Lazer, Recreação e Cuidados","Educação","Saúde, Estética e Bem-estar","Outros Serviços"]},
+      {k:"cargoPretendido", label:"Função específica desejada", tipo:"text", tier:1},
+      {k:"cargoAtual", label:"Profissão / última função exercida", tipo:"text", tier:1},
+
+      {k:"funcoesAlimentos", label:"Funções específicas — Alimentos e Bebidas", tipo:"checkbox", tier:2, opcoes:["Garçom / Garçonete","Auxiliar de cozinha","Cozinheiro(a)","Churrasqueiro(a)","Cumim","Pizzaiolo(a)","Sushiman","Confeiteiro(a)","Auxiliar de confeitaria","Barman / Bartender","Atendente de restaurante","Atendente de bar","Copeira","Cozinheiro(a) de comida regional","Auxiliar de cozinha regional","Churrasqueiro(a) de praia","Gerente de alimentos e bebidas","Supervisor(a) de alimentos e bebidas"]},
+      {k:"funcoesHotelaria", label:"Funções específicas — Hotelaria e Hospedagem", tipo:"checkbox", tier:2, opcoes:["Recepcionista","Recepcionista de hotel","Auxiliar de recepção","Camareira","Governanta","Mensageiro","Manobrista","Gerente de hotel","Supervisor(a) de hospedagem"]},
+      {k:"funcoesLimpeza", label:"Funções específicas — Limpeza, Lavanderia e Serviços Gerais", tipo:"checkbox", tier:2, opcoes:["Auxiliar de lavanderia","Lavadeira","Passadeira","Auxiliar de limpeza","Faxineira","Diarista","Serviços gerais","Zelador(a)","Ajudante geral"]},
+      {k:"funcoesManutencao", label:"Funções específicas — Manutenção e Construção", tipo:"checkbox", tier:2, opcoes:["Jardineiro","Piscineiro","Auxiliar de manutenção","Técnico de manutenção","Eletricista","Eletricista predial","Encanador","Pintor","Pedreiro","Servente de pedreiro","Marceneiro","Serralheiro","Soldador","Técnico de refrigeração","Técnico de ar-condicionado","Instalador de ar-condicionado"]},
+      {k:"funcoesComercial", label:"Funções específicas — Comercial, Vendas e Caixa", tipo:"checkbox", tier:2, opcoes:["Vendedor(a)","Atendente de vendas","Representante comercial","Promotor(a) de vendas","Operador(a) de caixa","Fiscal de loja","Repositor(a)","Estoquista","Auxiliar de estoque","Auxiliar de depósito","Conferente","Empacotador(a)","Gerente de loja","Subgerente","Vendedor(a) ambulante","Vendedor(a) de praia","Auxiliar de barraca de praia"]},
+      {k:"funcoesAdminRH", label:"Funções específicas — Administrativo e Recursos Humanos", tipo:"checkbox", tier:2, opcoes:["Auxiliar administrativo","Assistente administrativo","Auxiliar de RH","Assistente de RH"]},
+      {k:"funcoesLogistica", label:"Funções específicas — Logística e Transporte", tipo:"checkbox", tier:2, opcoes:["Motorista","Motorista de turismo","Motorista de van","Motorista particular","Motorista de aplicativo","Motoboy","Entregador(a)","Auxiliar de logística","Carregador(a)"]},
+      {k:"funcoesSeguranca", label:"Funções específicas — Segurança e Eventos", tipo:"checkbox", tier:2, opcoes:["Segurança","Vigilante","Controlador(a) de acesso","Recepcionista de eventos","Promotor(a) de eventos","Produtor(a) de eventos","Auxiliar de eventos","Auxiliar de montagem"]},
+      {k:"funcoesTurismo", label:"Funções específicas — Turismo, Entretenimento e Mídia", tipo:"checkbox", tier:2, opcoes:["Técnico de som","Operador(a) de som","Iluminador(a)","DJ","Músico(a)","Fotógrafo(a)","Cinegrafista","Criador(a) de conteúdo","Profissional de marketing digital","Guia de turismo","Agente de turismo","Vendedor(a) de passeios turísticos","Atendente turístico","Condutor(a) turístico","Marinheiro","Auxiliar de embarcação","Designer gráfico","Profissional de vídeo"]},
+      {k:"funcoesLazer", label:"Funções específicas — Lazer, Recreação e Cuidados", tipo:"checkbox", tier:2, opcoes:["Recreador(a)","Recreador(a) infantil","Monitor(a) infantil","Monitor(a) de piscina","Salva-vidas","Supervisor(a) de salva-vidas","Cuidador(a)","Oficineiro(a)","Instrutor(a) de cursos","Palestrante"]},
+      {k:"funcoesEducacao", label:"Funções específicas — Educação", tipo:"checkbox", tier:2, opcoes:["Professor(a) de inglês","Professor(a) de português","Professor(a) de matemática","Professor(a) de ciências","Professor(a) de história","Professor(a) de geografia","Professor(a) de artes","Psicólogo(a)"]},
+      {k:"funcoesSaude", label:"Funções específicas — Saúde, Estética e Bem-estar", tipo:"checkbox", tier:2, opcoes:["Massoterapeuta","Farmacêutico(a)","Atendente de farmácia"]},
+      {k:"funcoesOutros", label:"Funções específicas — Outros Serviços", tipo:"checkbox", tier:2, opcoes:["Representante comercial de produtos","Atendente de pet shop","Profissional de banho e tosa","Costureira","Artesão(ã)"]},
+      {k:"outraFuncaoNaoListada", label:"Outra função não listada", tipo:"text", tier:2},
+
+      {k:"areaAtuacao", label:"Área profissional de atuação (perfil administrativo/corporativo)", tipo:"radio", tier:3, opcoes:["Administrativo","Comercial / Vendas","Financeiro / Contábil","Recursos Humanos","Logística / Estoque","Produção / Operações","Atendimento ao cliente","Saúde","Educação","Tecnologia da Informação","Construção civil","Outra"]},
+      {k:"areaAtuacaoOutra", label:"Outra — qual?", tipo:"text", tier:3, showIf:["areaAtuacao","Outra"]}
+    ]
+  },
+  {
+    id: "s3", titulo: "3. Profissão e experiência",
+    tier: 1,
+    campos: [
+      {k:"jaTrabalhouArea", label:"Já trabalhou nessa área antes?", tipo:"radio", tier:1, opcoes:["Não, seria minha primeira vez","Sim, já trabalhei nessa área"]},
+      {k:"tempoExperiencia", label:"Tempo total de experiência na função", tipo:"radio", tier:1, opcoes:["Sem experiência","Até 1 ano","De 1 a 3 anos","De 3 a 5 anos","Acima de 5 anos"]},
+      {k:"ultimaEmpresa", label:"Última empresa / local onde trabalhou", tipo:"text", tier:1},
+      {k:"principaisAtividades", label:"Principais atividades que já realizou nessa função", tipo:"textarea", tier:1},
+
+      {k:"empresaAtual", label:"Empresa atual", tipo:"text", tier:2},
+      {k:"desde", label:"Desde (mês/ano)", tipo:"text", tier:2},
+      {k:"situacaoAtual", label:"Situação profissional atual", tipo:"radio", tier:2, opcoes:["Empregado(a) CLT","Autônomo(a) / MEI","Desempregado(a)","Trabalho de temporada","Estudante / Estagiário(a)"]},
+      {k:"jaTemporadaPraia", label:"Já trabalhou em temporada de praia / alta temporada turística?", tipo:"radio", tier:2, opcoes:["Não","Sim"]},
+      {k:"quantasTemporadas", label:"Quantas temporadas?", tipo:"text", tier:2, showIf:["jaTemporadaPraia","Sim"]},
+      {k:"exerceuLideranca", label:"Já exerceu função de liderança ou supervisão?", tipo:"radio", tier:2, opcoes:["Não","Sim"]},
+      {k:"liderancaDetalhe", label:"Cargo e período", tipo:"text", tier:2, showIf:["exerceuLideranca","Sim"]},
+      {k:"motivoSaida", label:"Motivo da saída do último emprego", tipo:"radio", tier:2, opcoes:["Pedido de demissão","Demissão sem justa causa","Fim de contrato","Fim da temporada","Encerramento da empresa","Outro"]},
+      {k:"motivoSaidaOutro", label:"Outro — qual?", tipo:"text", tier:2, showIf:["motivoSaida","Outro"]},
+
+      {k:"nivelUltimoCargo", label:"Nível do último cargo ocupado", tipo:"radio", tier:3, opcoes:["Operacional / Auxiliar","Assistente","Analista / Técnico","Supervisão","Coordenação / Gerência","Direção"]},
+      {k:"exp1", label:"Experiência 1 — Empresa / Cargo / Período", tipo:"text", tier:3},
+      {k:"exp2", label:"Experiência 2 — Empresa / Cargo / Período", tipo:"text", tier:3},
+      {k:"exp3", label:"Experiência 3 — Empresa / Cargo / Período", tipo:"text", tier:3},
+      {k:"referencias", label:"Referências profissionais (nome, empresa e contato)", tipo:"textarea", tier:3}
+    ]
+  },
+  {
+    id: "s4f", titulo: "4. Formação e qualificações",
+    tier: 2,
+    campos: [
+      {k:"cursosComplementares", label:"Cursos e certificações relacionados à função (ex.: manipulação de alimentos, barista, salva-vidas, NR35, guia de turismo)", tipo:"textarea", tier:2},
+      {k:"possuiCnh", label:"Possui CNH?", tipo:"radio", tier:2, opcoes:["Não","Sim"]},
+      {k:"categoriaCnh", label:"Categoria da CNH", tipo:"text", tier:2, showIf:["possuiCnh","Sim"]},
+      {k:"idiomas", label:"Idiomas", tipo:"grid", tier:2, linhas:["Inglês","Espanhol"], colunas:["Básico","Intermediário","Avançado","Fluente"], comOutro:true},
+      {k:"informatica", label:"Conhecimentos de informática", tipo:"grid", tier:3,
         linhas:["Windows / navegação e e-mail","Word ou editores de texto","Excel ou planilhas","PowerPoint / apresentações","Sistemas de gestão (ERP, CRM)"],
         colunas:["Não possui","Básico","Intermediário","Avançado"], comOutro:true},
-      {k:"idiomas", label:"Idiomas", tipo:"grid",
-        linhas:["Inglês","Espanhol"],
-        colunas:["Básico","Intermediário","Avançado","Fluente"], comOutro:true}
+      {k:"cursoPrincipal", label:"Curso / formação principal", tipo:"text", tier:3},
+      {k:"instituicao", label:"Instituição", tipo:"text", tier:3},
+      {k:"anoConclusao", label:"Ano de conclusão (ou previsão)", tipo:"text", tier:3}
     ]
   },
   {
-    id:"s3", titulo:"3. Experiência profissional",
-    campos:[
-      {k:"cargoAtual", label:"Profissão / cargo atual", tipo:"text"},
-      {k:"empresaAtual", label:"Empresa atual", tipo:"text"},
-      {k:"desde", label:"Desde (mês/ano)", tipo:"text"},
-      {k:"cargoPretendido", label:"Cargo pretendido", tipo:"text"},
-      {k:"situacaoAtual", label:"Situação profissional atual", tipo:"radio", opcoes:["Empregado(a) CLT","Autônomo(a) / MEI","Desempregado(a)","Estagiário(a) / Aprendiz","Servidor(a) público","Afastado(a) / Licença"]},
-      {k:"areaAtuacao", label:"Área profissional de atuação", tipo:"radio", opcoes:["Administrativo","Comercial / Vendas","Financeiro / Contábil","Recursos Humanos","Logística / Estoque","Produção / Operações","Atendimento ao cliente","Saúde","Educação","Tecnologia da Informação","Construção civil","Outra"]},
-      {k:"areaAtuacaoOutra", label:"Outra — qual?", tipo:"text", showIf:["areaAtuacao","Outra"]},
-      {k:"tempoExperiencia", label:"Tempo total de experiência profissional", tipo:"radio", opcoes:["Sem experiência","Até 1 ano","De 1 a 3 anos","De 3 a 5 anos","De 5 a 10 anos","Acima de 10 anos"]},
-      {k:"expCargoPretendido", label:"Experiência específica no cargo pretendido", tipo:"radio", opcoes:["Nenhuma","Até 6 meses","De 6 meses a 2 anos","De 2 a 5 anos","Acima de 5 anos"]},
-      {k:"nivelUltimoCargo", label:"Nível do último cargo ocupado", tipo:"radio", opcoes:["Operacional / Auxiliar","Assistente","Analista / Técnico","Supervisão","Coordenação / Gerência","Direção"]},
-      {k:"exerceuLideranca", label:"Já exerceu função de liderança?", tipo:"radio", opcoes:["Não","Sim"]},
-      {k:"liderancaDetalhe", label:"Nº de liderados e período", tipo:"text", showIf:["exerceuLideranca","Sim"]},
-      {k:"exp1", label:"Experiência 1 — Empresa / Cargo / Período", tipo:"text"},
-      {k:"exp2", label:"Experiência 2 — Empresa / Cargo / Período", tipo:"text"},
-      {k:"exp3", label:"Experiência 3 — Empresa / Cargo / Período", tipo:"text"},
-      {k:"motivoSaida", label:"Motivo da saída do último emprego", tipo:"radio", opcoes:["Pedido de demissão","Demissão sem justa causa","Fim de contrato","Acordo entre as partes","Encerramento da empresa","Outro"]},
-      {k:"motivoSaidaOutro", label:"Outro — qual?", tipo:"text", showIf:["motivoSaida","Outro"]}
-    ]
-  },
-  {
-    id:"s4", titulo:"4. Competências comportamentais (autoavaliação)",
+    id: "s5comp", titulo: "5. Competências comportamentais (autoavaliação)",
+    tier: 3,
     intro:"Marque o grau que melhor representa você: 1 = Preciso desenvolver · 5 = Domino plenamente.",
-    campos:[
-      {k:"competencias", label:"Competências", tipo:"scale5",
-        linhas:["Comunicação e expressão","Trabalho em equipe","Organização e planejamento","Proatividade / iniciativa","Resolução de problemas","Liderança","Flexibilidade a mudanças","Foco em resultados","Relacionamento interpessoal","Gestão do tempo e prazos"]},
-      {k:"ambienteTrabalho", label:"Ambiente de trabalho em que rende melhor", tipo:"checkbox", opcoes:["Rotina estruturada","Ritmo dinâmico e variado","Autonomia individual","Trabalho em equipe","Metas e pressão por resultado","Contato direto com público"]}
+    campos: [
+      {k:"competencias", label:"Competências", tipo:"scale5", tier:3, linhas:["Comunicação e expressão","Trabalho em equipe","Organização e planejamento","Proatividade / iniciativa","Resolução de problemas","Liderança","Flexibilidade a mudanças","Foco em resultados","Relacionamento interpessoal","Gestão do tempo e prazos"]},
+      {k:"ambienteTrabalho", label:"Ambiente de trabalho em que rende melhor", tipo:"checkbox", tier:3, opcoes:["Rotina estruturada","Ritmo dinâmico e variado","Autonomia individual","Trabalho em equipe","Metas e pressão por resultado","Contato direto com público"]}
     ]
   },
   {
-    id:"s5", titulo:"5. Disponibilidade e condições de contratação",
-    campos:[
-      {k:"veiculoProprio", label:"Possui veículo próprio?", tipo:"radio", opcoes:["Não","Sim — Carro","Sim — Moto","Outro"]},
-      {k:"veiculoOutro", label:"Outro — qual?", tipo:"text", showIf:["veiculoProprio","Outro"]},
-      {k:"possuiCnh", label:"Possui CNH?", tipo:"radio", opcoes:["Não","Sim"]},
-      {k:"categoriaCnh", label:"Categoria da CNH", tipo:"checkbox", opcoes:["A","B","AB","C","D","E"], showIf:["possuiCnh","Sim"]},
-      {k:"validadeCnh", label:"Validade da CNH", tipo:"date", showIf:["possuiCnh","Sim"]},
-      {k:"ear", label:"Exerce atividade remunerada (EAR)?", tipo:"radio", opcoes:["Sim","Não"], showIf:["possuiCnh","Sim"]},
-      {k:"disponibilidadeHorario", label:"Disponibilidade de horário", tipo:"checkbox", opcoes:["Manhã","Tarde","Noite","Horário comercial","Escala 12x36","Escala 6x1","Turnos alternados","Finais de semana","Feriados"]},
-      {k:"disponibilidadeViagens", label:"Disponibilidade para viagens", tipo:"radio", opcoes:["Não","Sim — eventual","Sim — frequente","Sim — sem restrições"]},
-      {k:"disponibilidadeMudanca", label:"Disponibilidade para mudança de cidade", tipo:"radio", opcoes:["Não","Sim","A avaliar conforme proposta"]},
-      {k:"modeloTrabalho", label:"Modelo de trabalho desejado", tipo:"radio", opcoes:["Presencial","Híbrido","Remoto","Indiferente"]},
-      {k:"tipoContratacao", label:"Tipo de contratação desejada", tipo:"radio", opcoes:["CLT efetivo","CLT temporário","Estágio","Jovem Aprendiz","PJ / MEI","Freelancer / diária"]},
-      {k:"pretensaoFaixa", label:"Pretensão salarial", tipo:"radio", opcoes:["Até R$ 1.500","R$ 1.501 a R$ 2.500","R$ 2.501 a R$ 4.000","R$ 4.001 a R$ 6.000","R$ 6.001 a R$ 10.000","Acima de R$ 10.000"]},
-      {k:"valorPretendido", label:"Valor pretendido (R$)", tipo:"text"},
-      {k:"aCombinar", label:"A combinar?", tipo:"radio", opcoes:["Sim","Não"]},
-      {k:"inicioAtividades", label:"Início das atividades", tipo:"radio", opcoes:["Imediato","Em até 15 dias","Em até 30 dias","Acima de 30 dias"]},
-      {k:"beneficios", label:"Benefícios considerados prioritários (marque até 3)", tipo:"checkbox", max:3, opcoes:["Vale-transporte","Vale-alimentação / refeição","Plano de saúde","Plano odontológico","Auxílio-creche","Participação nos lucros","Plano de carreira","Auxílio-educação","Seguro de vida"]}
+    id: "s6", titulo: "6. Disponibilidade e condições de contratação",
+    tier: 1,
+    campos: [
+      {k:"tipoContratacao", label:"Tipo de vínculo desejado", tipo:"radio", tier:1, opcoes:["CLT efetivo","Temporada (temporário / sazonal)","Diária / Freelancer","Indiferente"]},
+      {k:"fimDeSemana", label:"Pode trabalhar em finais de semana e feriados?", tipo:"radio", tier:1, opcoes:["Sim, sem restrição","Somente finais de semana","Não posso"]},
+      {k:"disponibilidadeHorario", label:"Horário disponível", tipo:"checkbox", tier:1, opcoes:["Manhã","Tarde","Noite","Qualquer horário"]},
+      {k:"pretensaoFaixa", label:"Pretensão salarial", tipo:"radio", tier:1, opcoes:["Até R$ 1.500","R$ 1.501 a R$ 2.500","Acima de R$ 2.500"]},
+      {k:"inicioAtividades", label:"Início das atividades", tipo:"radio", tier:1, opcoes:["Imediato","Em até 15 dias","Em até 30 dias"]},
+
+      {k:"hospedagemLocal", label:"Possui disponibilidade para se hospedar no local de trabalho (pousadas, temporadas fora da cidade)?", tipo:"radio", tier:2, opcoes:["Não","Sim","A avaliar conforme proposta"]},
+      {k:"disponibilidadeHorarioAvancado", label:"Escalas e turnos", tipo:"checkbox", tier:2, opcoes:["Escala 6x1","Escala 12x36","Turnos alternados","Plantões"]},
+      {k:"disponibilidadeViagensTemporada", label:"Disponibilidade para viagens / mudança de cidade durante a temporada", tipo:"radio", tier:2, opcoes:["Não","Sim — eventual","Sim — durante toda a temporada"]},
+      {k:"beneficios", label:"Benefícios considerados prioritários (marque até 3)", tipo:"checkbox", max:3, tier:2, opcoes:["Vale-transporte","Vale-alimentação / refeição","Plano de saúde","Plano odontológico","Auxílio-creche","Participação nos lucros","Plano de carreira","Auxílio-educação","Seguro de vida"]},
+
+      {k:"modeloTrabalho", label:"Modelo de trabalho desejado", tipo:"radio", tier:3, opcoes:["Presencial","Híbrido","Remoto","Indiferente"]},
+      {k:"disponibilidadeMudanca", label:"Disponibilidade para mudança de cidade (fora de temporada)", tipo:"radio", tier:3, opcoes:["Não","Sim","A avaliar conforme proposta"]},
+      {k:"valorPretendido", label:"Valor pretendido (R$)", tipo:"text", tier:3},
+      {k:"aCombinar", label:"Salário a combinar?", tipo:"radio", tier:3, opcoes:["Sim","Não"]}
     ]
   },
   {
-    id:"s6", titulo:"6. Informações complementares",
-    intro:"Registre aqui restrições, disponibilidades específicas, objetivos profissionais ou qualquer informação relevante.",
-    campos:[
-      {k:"complementares", label:"Informações complementares", tipo:"textarea"}
+    id: "s7comp", titulo: "7. Informações complementares",
+    tier: 1,
+    intro:"Quer contar mais alguma coisa sobre você ou sua experiência?",
+    campos: [
+      {k:"complementares", label:"Informações complementares", tipo:"textarea", tier:1}
     ]
   },
   {
-    id:"s8", titulo:"7. Autorização e consentimento — LGPD",
-    lgpd:true,
-    campos:[
-      {k:"autorizacaoLgpd", label:"Autorização de uso dos dados", tipo:"radio", req:true, opcoes:["SIM — autorizo o arquivamento e uso dos meus dados para futuras oportunidades.","NÃO — não autorizo o arquivamento dos meus dados após este processo seletivo."]},
-      {k:"autorizoContato", label:"Autorizo contato por", tipo:"checkbox", opcoes:["Telefone","WhatsApp","E-mail","SMS"]},
-      {k:"assinatura", label:"Assinatura do candidato (digite seu nome completo como confirmação eletrônica)", tipo:"text", req:true}
+    id: "s8", titulo: "Autorização e consentimento — LGPD",
+    lgpd:true, tier:0,
+    campos: [
+      {k:"autorizacaoLgpd", label:"Autorização de uso dos dados", tipo:"radio", req:true, tier:0, opcoes:["SIM — autorizo o uso dos meus dados para futuras oportunidades.","NÃO — não autorizo o arquivamento após este processo seletivo."]},
+      {k:"autorizoContato", label:"Autorizo contato por", tipo:"checkbox", tier:0, opcoes:["Telefone","WhatsApp","E-mail","SMS"]},
+      {k:"assinatura", label:"Assinatura do candidato (digite seu nome completo como confirmação eletrônica)", tipo:"text", req:true, tier:0}
     ]
   }
 ];
 
 const VAGA_FIELD = {k:"vaga", label:"Vaga / Processo", tipo:"text"};
 
-/* Seção 7 do PDF original — "uso exclusivo do avaliador" — só aparece no painel admin */
+/* Seção do PDF original — "uso exclusivo do avaliador" — só aparece no painel admin */
 const SECAO_AVALIADOR = {
-  id:"s7", titulo:"Uso exclusivo do avaliador",
+  id:"savaliador", titulo:"Uso exclusivo do avaliador",
   criterios:["Apresentação pessoal","Comunicação verbal","Clareza e coerência das respostas","Aderência ao perfil da vaga","Postura e interesse"],
   colunas:["Insuficiente","Regular","Bom","Excelente"],
   pareceres:["Aprovado para a vaga","Aprovado com ressalvas","Encaminhar para outra vaga","Banco de talentos","Não recomendado no momento"]
@@ -366,7 +432,7 @@ const SECAO_AVALIADOR = {
 
 /* ------------------------------------------------------------------ */
 
-let state = {}; // respostas do candidato atual
+let state = {};
 let allFields = [];
 SECOES.forEach(s => s.campos.forEach(c => allFields.push(c)));
 
@@ -379,9 +445,14 @@ function esc(s){
 }
 
 function fieldVisible(campo){
+  if(getTier() < (campo.tier||0)) return false;
   if(!campo.showIf) return true;
   const [k,v] = campo.showIf;
   return state[k] === v;
+}
+
+function secaoVisible(secao){
+  return getTier() >= (secao.tier||0);
 }
 
 function renderChoiceGroup(campo, tipo){
@@ -484,8 +555,9 @@ function renderField(campo){
 }
 
 function renderSecao(secao){
+  if(!secaoVisible(secao)) return '';
   const camposHtml = secao.campos.map(renderField).join('');
-  const lgpdText = secao.lgpd ? `<div class="lgpd-text">Declaro estar ciente e concordo que os dados pessoais e profissionais fornecidos neste formulário sejam armazenados e utilizados pela NÚCLEO RH para fins de recrutamento, seleção, entrevistas futuras, oferecimento de oportunidades profissionais e gestão de candidatos, nos termos da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados). Estou ciente de que posso solicitar, a qualquer momento, o acesso, a correção ou a exclusão dos meus dados.</div>` : '';
+  const lgpdText = secao.lgpd ? `<div class="lgpd-text">Declaro estar ciente e concordo que meus dados pessoais e profissionais fornecidos neste formulário sejam armazenados e utilizados pela NÚCLEO RH para compor o banco de talentos e para fins de recrutamento, seleção e oferecimento de oportunidades profissionais, inclusive vagas sazonais/temporada, nos termos da Lei nº 13.709/2018 (LGPD). Posso solicitar, a qualquer momento, o acesso, a correção ou a exclusão dos meus dados.</div>` : '';
   const intro = secao.intro ? `<p class="note" style="margin:0 0 12px">${esc(secao.intro)}</p>` : '';
   return `<section class="card" id="${secao.id}">
     <div class="card-head">${esc(secao.titulo)}</div>
@@ -494,8 +566,9 @@ function renderSecao(secao){
 }
 
 function progresso(){
-  const total = allFields.filter(c => !c.req === false || true).length;
-  const preenchidos = allFields.filter(c => {
+  const visiveis = allFields.filter(fieldVisible);
+  const total = visiveis.length || 1;
+  const preenchidos = visiveis.filter(c => {
     const v = state[c.k];
     if(Array.isArray(v)) return v.length > 0;
     if(typeof v === 'object' && v) return Object.keys(v).length > 0;
@@ -504,9 +577,18 @@ function progresso(){
   return Math.min(100, Math.round((preenchidos/total)*100));
 }
 
+function tierLabel(){
+  const t = getTier();
+  if(t === 0) return '';
+  if(t === 1) return 'Cadastro básico';
+  if(t === 2) return 'Cadastro intermediário';
+  return 'Cadastro completo';
+}
+
 function renderForm(){
   const app = document.getElementById('app');
   const secoesHtml = SECOES.map(renderSecao).join('');
+  const tl = tierLabel();
   app.innerHTML = `
     <div class="topbar">
       <img src="${LOGO}" alt="Núcleo RH">
@@ -515,11 +597,11 @@ function renderForm(){
     <div class="progress-track"><div class="progress-fill" style="width:${progresso()}%"></div></div>
     <div class="wrap">
       <div class="hero">
-        <h1>Formulário de Recrutamento e Seleção</h1>
-        <p>Preencha com atenção. Os campos marcados com <span class="req">*</span> são obrigatórios. Suas informações são usadas exclusivamente para este processo seletivo.</p>
+        <h1>Cadastro — Banco de Talentos</h1>
+        <p>Preencha com atenção. Os campos marcados com <span class="req">*</span> são obrigatórios. ${tl ? `Perguntas adicionais foram liberadas conforme sua escolaridade — <b>${esc(tl)}</b>.` : 'Após informar sua escolaridade, mostraremos as perguntas mais relevantes para o seu perfil.'}</p>
       </div>
       <div class="meta-row">
-        <div class="field"><label>${esc(VAGA_FIELD.label)}</label><input type="text" value="${esc(state.vaga||'')}" oninput="state.vaga=this.value" placeholder="Ex: Assistente Administrativo"></div>
+        <div class="field"><label>${esc(VAGA_FIELD.label)}</label><input type="text" value="${esc(state.vaga||'')}" oninput="state.vaga=this.value" placeholder="Ex: Garçom, Recepcionista, Assistente Administrativo"></div>
       </div>
       <div class="err-banner" id="err-banner"></div>
       ${secoesHtml}
@@ -546,11 +628,12 @@ async function enviar(){
   const id = uid();
   const payload = Object.assign({}, state, {
     _id: id,
+    _tier: getTier(),
     _enviadoEm: new Date().toISOString()
   });
 
   try{
-    await firestore.collection('submissions').doc(id).set(payload);
+    await enviarPayload(id, payload);
     renderSucesso();
   }catch(e){
     btn.disabled = false;
@@ -569,46 +652,6 @@ function renderSucesso(){
 }
 
 /* ===================== PAINEL DO AVALIADOR ===================== */
-
-function renderLogin(erro){
-  document.getElementById('app').innerHTML = `
-    <div class="login-box">
-      <h1>Painel do avaliador</h1>
-      <p>Faça login com sua conta de administrador da Núcleo RH.</p>
-      ${erro ? `<div class="err-banner" style="display:block">${esc(erro)}</div>` : ''}
-      <div class="field"><label>E-mail</label><input type="email" id="login-email" autocomplete="username"></div>
-      <div class="field"><label>Senha</label><input type="password" id="login-senha" autocomplete="current-password"></div>
-      <button class="btn" onclick="fazerLogin()">Entrar</button>
-    </div>`;
-  document.getElementById('login-senha').addEventListener('keydown', e => { if(e.key === 'Enter') fazerLogin(); });
-}
-
-window.fazerLogin = async function(){
-  const email = document.getElementById('login-email').value.trim();
-  const senha = document.getElementById('login-senha').value;
-  try{
-    await auth.signInWithEmailAndPassword(email, senha);
-  }catch(e){
-    renderLogin('E-mail ou senha inválidos.');
-  }
-};
-
-async function renderAdminGate(){
-  document.getElementById('app').innerHTML = `<div class="gate">Carregando painel do avaliador…</div>`;
-  auth.onAuthStateChanged(async user => {
-    if(location.hash !== '#admin') return;
-    if(!user){
-      renderLogin();
-      return;
-    }
-    try{
-      const snap = await firestore.collection('submissions').get();
-      renderAdmin(snap.docs.map(d => d.data()));
-    }catch(e){
-      document.getElementById('app').innerHTML = `<div class="gate">Você não tem permissão de administrador para ver as respostas.<br><button class="btn small" style="margin-top:14px" onclick="auth.signOut()">Sair</button></div>`;
-    }
-  });
-}
 
 function renderAdmin(candidatos){
   candidatos.sort((a,b) => (a._enviadoEm||'').localeCompare(b._enviadoEm||''));
@@ -631,7 +674,7 @@ function renderAdmin(candidatos){
       <div class="admin-toolbar no-print">
         <button class="btn small" onclick="window.print()">Imprimir todos em lote</button>
         <button class="btn small secondary" onclick="location.hash='';location.reload()">Ver formulário de preenchimento</button>
-        <button class="btn small secondary" onclick="auth.signOut()">Sair</button>
+        ${typeof auth !== 'undefined' ? '<button class="btn small secondary" onclick="auth.signOut()">Sair</button>' : ''}
       </div>
       <div class="candidate-list no-print">${rows || '<p class="note">Nenhum candidato preencheu o formulário ainda.</p>'}</div>
       <div id="print-area">${candidatos.map(printCandidato).join('')}</div>
@@ -661,17 +704,23 @@ function printScale5(c, campo){
 }
 
 function printField(c, campo){
+  if((campo.tier||0) > (c._tier===undefined?3:c._tier)) return '';
   if(campo.tipo === 'grid') return `<div class="p-field"><b>${esc(campo.label)}</b>${printGridTable(c,campo)}</div>`;
   if(campo.tipo === 'scale5') return `<div class="p-field"><b>${esc(campo.label)}</b>${printScale5(c,campo)}</div>`;
+  const val = c[campo.k];
+  if(val === undefined || val === '' || (Array.isArray(val) && val.length===0)) return '';
   return `<div class="p-field"><b>${esc(campo.label)}:</b> ${esc(respostaTexto(c,campo))}</div>`;
 }
 
 function printCandidato(c){
-  const secoesHtml = SECOES.map(s => `
-    <div class="p-section">
+  const secoesHtml = SECOES.filter(s => (s.tier||0) <= (c._tier===undefined?3:c._tier)).map(s => {
+    const body = s.campos.map(campo => printField(c, campo)).join('');
+    if(!body.trim()) return '';
+    return `<div class="p-section">
       <div class="p-section-head">${esc(s.titulo)}</div>
-      <div class="p-section-body">${s.campos.map(campo => printField(c, campo)).join('')}</div>
-    </div>`).join('');
+      <div class="p-section-body">${body}</div>
+    </div>`;
+  }).join('');
 
   const avaliadorHtml = `
     <div class="p-section">
@@ -684,18 +733,20 @@ function printCandidato(c){
       </div>
     </div>`;
 
+  const tierNomes = {1:'Básico', 2:'Intermediário', 3:'Completo'};
+
   return `<div class="print-page">
     <div class="p-header">
       <img src="${LOGO}" width="46" height="46">
       <div><b>NÚCLEO RH</b><span>Recrutamento e Seleção</span></div>
     </div>
-    <h2 class="p-title">Formulário de Recrutamento e Seleção</h2>
+    <h2 class="p-title">Cadastro — Banco de Talentos ${c._tier ? '(' + (tierNomes[c._tier]||'') + ')' : ''}</h2>
     <table class="p-meta"><tr>
       <td><b>ID do Candidato</b><br>${esc(c._id||'')}</td>
-      <td><b>Data da Entrevista</b><br>____/____/________</td>
+      <td><b>Data do Cadastro</b><br>${c._enviadoEm ? new Date(c._enviadoEm).toLocaleDateString('pt-BR') : '____/____/________'}</td>
       <td><b>Vaga / Processo</b><br>${esc(c.vaga||'—')}</td>
     </tr></table>
-    <div class="p-avaliador-line">Avaliador responsável: Arthur Andrade | Psicólogo | CRP: 10/01887</div>
+    <div class="p-avaliador-line">Atendimento: Núcleo RH — Recrutamento e Seleção</div>
     ${secoesHtml}
     ${avaliadorHtml}
     <div class="p-section">
@@ -742,6 +793,54 @@ printStyle.textContent = `
   @media print{ .print-page{box-shadow:none;border:none;margin:0} }
 `;
 document.head.appendChild(printStyle);
+
+
+/* ===================== ENVIO (Firestore) ===================== */
+async function enviarPayload(id, payload){
+  await firestore.collection('submissions').doc(id).set(payload);
+}
+
+/* ===================== LOGIN DO PAINEL ===================== */
+function renderLogin(erro){
+  document.getElementById('app').innerHTML = `
+    <div class="login-box">
+      <h1>Painel do avaliador</h1>
+      <p>Faça login com sua conta de administrador da Núcleo RH.</p>
+      ${erro ? `<div class="err-banner" style="display:block">${esc(erro)}</div>` : ''}
+      <div class="field"><label>E-mail</label><input type="email" id="login-email" autocomplete="username"></div>
+      <div class="field"><label>Senha</label><input type="password" id="login-senha" autocomplete="current-password"></div>
+      <button class="btn" onclick="fazerLogin()">Entrar</button>
+    </div>`;
+  document.getElementById('login-senha').addEventListener('keydown', e => { if(e.key === 'Enter') fazerLogin(); });
+}
+
+window.fazerLogin = async function(){
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  try{
+    await auth.signInWithEmailAndPassword(email, senha);
+  }catch(e){
+    renderLogin('E-mail ou senha inválidos.');
+  }
+};
+
+async function renderAdminGate(){
+  document.getElementById('app').innerHTML = `<div class="gate">Carregando painel do avaliador…</div>`;
+  auth.onAuthStateChanged(async user => {
+    if(location.hash !== '#admin') return;
+    if(!user){
+      renderLogin();
+      return;
+    }
+    try{
+      const snap = await firestore.collection('submissions').get();
+      renderAdmin(snap.docs.map(d => d.data()));
+    }catch(e){
+      document.getElementById('app').innerHTML = `<div class="gate">Você não tem permissão de administrador para ver as respostas.<br><button class="btn small" style="margin-top:14px" onclick="auth.signOut()">Sair</button></div>`;
+    }
+  });
+}
+
 
 /* ===================== BOOT ===================== */
 
