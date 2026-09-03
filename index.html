@@ -109,6 +109,11 @@ section.card{
 .card-body{padding:16px}
 .field{margin-bottom:14px}
 .field:last-child{margin-bottom:0}
+.field.field-error{box-shadow:0 0 0 2px var(--danger);border-radius:10px;padding:8px;margin:-8px -8px 6px -8px;animation:fieldShake .35s}
+.field.field-error label{color:var(--danger)}
+.field.field-error input,.field.field-error textarea{border-color:var(--danger)}
+@keyframes fieldShake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-3px)}40%,60%{transform:translateX(3px)}}
+@media (prefers-reduced-motion: reduce){.field.field-error{animation:none}}
 label{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:5px}
 label .opt{font-weight:400;color:var(--ink-soft);font-size:12px}
 input[type=text],input[type=date],input[type=tel],input[type=email],input[type=number],textarea,select{
@@ -433,6 +438,14 @@ const SECAO_AVALIADOR = {
 /* ------------------------------------------------------------------ */
 
 let state = {};
+let erroCampos = new Set();
+
+function limparErro(k){
+  if(erroCampos.delete(k)){
+    const el = document.getElementById('field-'+k);
+    if(el) el.classList.remove('field-error');
+  }
+}
 let allFields = [];
 SECOES.forEach(s => s.campos.forEach(c => allFields.push(c)));
 
@@ -502,6 +515,7 @@ function renderScale5(campo){
 }
 
 window.onChoice = function(k, tipo, el){
+  erroCampos.delete(k);
   if(tipo === 'radio'){
     state[k] = el.value;
   } else {
@@ -541,9 +555,9 @@ function renderField(campo){
   const reqMark = campo.req ? ' <span class="req">*</span>' : '';
   let inner = '';
   if(['text','date','tel','email','number'].includes(campo.tipo)){
-    inner = `<input type="${campo.tipo}" value="${esc(state[campo.k]||'')}" oninput="state['${campo.k}']=this.value">`;
+    inner = `<input type="${campo.tipo}" value="${esc(state[campo.k]||'')}" oninput="state['${campo.k}']=this.value; limparErro('${campo.k}')">`;
   } else if(campo.tipo === 'textarea'){
-    inner = `<textarea oninput="state['${campo.k}']=this.value">${esc(state[campo.k]||'')}</textarea>`;
+    inner = `<textarea oninput="state['${campo.k}']=this.value; limparErro('${campo.k}')">${esc(state[campo.k]||'')}</textarea>`;
   } else if(campo.tipo === 'radio' || campo.tipo === 'checkbox'){
     inner = `<div class="choices">${renderChoiceGroup(campo, campo.tipo)}</div>`;
   } else if(campo.tipo === 'grid'){
@@ -551,7 +565,8 @@ function renderField(campo){
   } else if(campo.tipo === 'scale5'){
     inner = renderScale5(campo);
   }
-  return `<div class="field"><label>${esc(campo.label)}${reqMark}</label>${inner}</div>`;
+  const errClass = erroCampos.has(campo.k) ? ' field-error' : '';
+  return `<div class="field${errClass}" id="field-${campo.k}"><label>${esc(campo.label)}${reqMark}</label>${inner}</div>`;
 }
 
 function renderSecao(secao){
@@ -618,9 +633,20 @@ async function enviar(){
     return v === undefined || v === '';
   });
   if(faltando.length){
-    showErr('Preencha os campos obrigatórios: ' + faltando.map(f=>f.label).join(', '));
+    erroCampos = new Set(faltando.map(f=>f.k));
+    renderForm();
+    showErr(faltando.length === 1
+      ? '1 campo obrigatório não foi preenchido — destacado em vermelho abaixo.'
+      : faltando.length + ' campos obrigatórios não foram preenchidos — destacados em vermelho abaixo.');
+    const alvo = document.getElementById('field-' + faltando[0].k);
+    if(alvo){
+      alvo.scrollIntoView({behavior:'smooth', block:'center'});
+      const primeiroInput = alvo.querySelector('input, textarea');
+      if(primeiroInput) primeiroInput.focus({preventScroll:true});
+    }
     return;
   }
+  erroCampos.clear();
   const btn = document.querySelector('.actions .btn');
   btn.disabled = true;
   btn.textContent = 'Enviando...';
