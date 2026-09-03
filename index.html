@@ -205,6 +205,15 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--focus);outline-o
 .cand-row .info{flex:1;min-width:0}
 .cand-row .info b{display:block;font-size:14.5px}
 .cand-row .info span{display:block;font-size:12px;color:var(--ink-soft)}
+.cand-check{width:18px;height:18px;flex:none;accent-color:var(--navy);cursor:pointer}
+.btn.danger{background:var(--danger)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.confirm-overlay{position:fixed;inset:0;background:rgba(15,20,28,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.confirm-box{background:var(--paper);border-radius:14px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.confirm-box h2{font-size:17px;margin-bottom:8px;font-family:'Poppins',sans-serif}
+.confirm-box p{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:18px}
+.confirm-actions{display:flex;gap:10px}
+.confirm-actions .btn{flex:1;width:auto}
 .gate{max-width:420px;margin:80px auto;text-align:center;padding:0 24px;color:var(--ink-soft);font-size:14px;line-height:1.6}
 
 .login-box{max-width:360px;margin:70px auto;padding:0 24px}
@@ -679,10 +688,19 @@ function renderSucesso(){
 
 /* ===================== PAINEL DO AVALIADOR ===================== */
 
+let candidatosAtuais = [];
+let selecionados = new Set();
+
 function renderAdmin(candidatos){
   candidatos.sort((a,b) => (a._enviadoEm||'').localeCompare(b._enviadoEm||''));
+  candidatosAtuais = candidatos;
+  const idsAtuais = new Set(candidatos.map(c=>c._id));
+  Array.from(selecionados).forEach(id => { if(!idsAtuais.has(id)) selecionados.delete(id); });
+  const todosSelecionados = candidatos.length > 0 && candidatos.every(c => selecionados.has(c._id));
+
   const rows = candidatos.map((c,i) => `
     <div class="cand-row">
+      <input type="checkbox" class="cand-check" ${selecionados.has(c._id)?'checked':''} onchange="toggleSelecionado('${c._id}', this.checked)">
       <div class="idx">${i+1}</div>
       <div class="info">
         <b>${esc(c.nome || '(sem nome)')}</b>
@@ -699,6 +717,9 @@ function renderAdmin(candidatos){
       </div>
       <div class="admin-toolbar no-print">
         <button class="btn small" onclick="window.print()">Imprimir todos em lote</button>
+        <button class="btn small secondary" onclick="selecionarTodos(${!todosSelecionados})">${todosSelecionados ? 'Limpar seleção' : 'Selecionar todos'}</button>
+        <button class="btn small danger" ${selecionados.size===0?'disabled':''} onclick="confirmarApagarSelecionados()">Apagar selecionados (${selecionados.size})</button>
+        <button class="btn small danger" ${candidatos.length===0?'disabled':''} onclick="confirmarApagarTodos()">Apagar todos</button>
         <button class="btn small secondary" onclick="location.hash='';location.reload()">Ver formulário de preenchimento</button>
         ${typeof auth !== 'undefined' ? '<button class="btn small secondary" onclick="auth.signOut()">Sair</button>' : ''}
       </div>
@@ -707,6 +728,78 @@ function renderAdmin(candidatos){
     </div>
   `;
 }
+
+window.toggleSelecionado = function(id, checked){
+  if(checked) selecionados.add(id); else selecionados.delete(id);
+  renderAdmin(candidatosAtuais);
+};
+
+window.selecionarTodos = function(marcar){
+  if(marcar) candidatosAtuais.forEach(c => selecionados.add(c._id));
+  else selecionados.clear();
+  renderAdmin(candidatosAtuais);
+};
+
+function abrirConfirmacao(titulo, mensagem, onConfirm){
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-box">
+      <h2>${esc(titulo)}</h2>
+      <p>${esc(mensagem)}</p>
+      <div class="confirm-actions">
+        <button class="btn small secondary" id="confirm-cancelar">Cancelar</button>
+        <button class="btn small danger" id="confirm-apagar">Sim, apagar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const fechar = () => overlay.remove();
+  overlay.addEventListener('click', e => { if(e.target === overlay) fechar(); });
+  overlay.querySelector('#confirm-cancelar').onclick = fechar;
+  overlay.querySelector('#confirm-apagar').onclick = async () => {
+    const btnApagar = overlay.querySelector('#confirm-apagar');
+    btnApagar.textContent = 'Apagando...';
+    btnApagar.disabled = true;
+    try{
+      await onConfirm();
+    }catch(e){
+      showErr('Não foi possível apagar agora. Tente novamente.');
+    }finally{
+      fechar();
+    }
+  };
+}
+
+window.confirmarApagarSelecionados = function(){
+  const n = selecionados.size;
+  if(n === 0) return;
+  abrirConfirmacao(
+    'Apagar candidatos selecionados?',
+    `Tem certeza que deseja apagar ${n} ${n===1?'cadastro':'cadastros'}? Essa ação não pode ser desfeita.`,
+    async () => {
+      const ids = Array.from(selecionados);
+      await excluirSubmissions(ids);
+      candidatosAtuais = candidatosAtuais.filter(c => !selecionados.has(c._id));
+      selecionados.clear();
+      renderAdmin(candidatosAtuais);
+    }
+  );
+};
+
+window.confirmarApagarTodos = function(){
+  if(candidatosAtuais.length === 0) return;
+  abrirConfirmacao(
+    'Apagar TODOS os candidatos?',
+    `Tem certeza que deseja apagar todos os ${candidatosAtuais.length} cadastros do banco de talentos? Essa ação não pode ser desfeita.`,
+    async () => {
+      const ids = candidatosAtuais.map(c => c._id);
+      await excluirSubmissions(ids);
+      candidatosAtuais = [];
+      selecionados.clear();
+      renderAdmin(candidatosAtuais);
+    }
+  );
+};
 
 function respostaTexto(c, campo){
   const v = c[campo.k];
@@ -824,6 +917,12 @@ document.head.appendChild(printStyle);
 /* ===================== ENVIO (Firestore) ===================== */
 async function enviarPayload(id, payload){
   await firestore.collection('submissions').doc(id).set(payload);
+}
+
+async function excluirSubmissions(ids){
+  const batch = firestore.batch();
+  ids.forEach(id => batch.delete(firestore.collection('submissions').doc(id)));
+  await batch.commit();
 }
 
 /* ===================== LOGIN DO PAINEL ===================== */
