@@ -581,7 +581,7 @@ function renderField(campo){
 function renderSecao(secao){
   if(!secaoVisible(secao)) return '';
   const camposHtml = secao.campos.map(renderField).join('');
-  const lgpdText = secao.lgpd ? `<div class="lgpd-text">Declaro estar ciente e concordo que meus dados pessoais e profissionais fornecidos neste formulário sejam armazenados e utilizados pela NÚCLEO RH para compor o banco de talentos e para fins de recrutamento, seleção e oferecimento de oportunidades profissionais, inclusive vagas sazonais/temporada, nos termos da Lei nº 13.709/2018 (LGPD). Posso solicitar, a qualquer momento, o acesso, a correção ou a exclusão dos meus dados.</div>` : '';
+  const lgpdText = secao.lgpd ? `<div class="lgpd-text">Declaro estar ciente e concordo que meus dados pessoais e profissionais fornecidos neste formulário sejam armazenados e utilizados pela NÚCLEO RH para compor o banco de talentos e para fins de recrutamento, seleção e oferecimento de oportunidades profissionais, inclusive vagas sazonais/temporada, nos termos da Lei nº 13.709/2018 (LGPD). Estou ciente de que meus dados podem ser compartilhados com empresas parceiras para fins de contratação, mediante meu interesse na vaga específica. Posso solicitar, a qualquer momento, o acesso, a correção ou a exclusão dos meus dados.</div>` : '';
   const intro = secao.intro ? `<p class="note" style="margin:0 0 12px">${esc(secao.intro)}</p>` : '';
   return `<section class="card" id="${secao.id}">
     <div class="card-head">${esc(secao.titulo)}</div>
