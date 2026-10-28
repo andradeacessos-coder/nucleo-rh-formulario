@@ -117,6 +117,7 @@ function render(){
     <div class="topbar">
       <img src="${LOGO}" alt="Jornal das Vagas">
       <div><b>JORNAL DAS VAGAS</b><span>Cadastre uma vaga — Salinópolis</span></div>
+      <a href="vagas.html" style="margin-left:auto;color:#fff;font-size:13px;font-weight:600;text-decoration:underline;white-space:nowrap">Ver vagas abertas</a>
     </div>
     <div class="wrap">
       <div class="hero">
@@ -151,6 +152,7 @@ async function enviar(){
         <div class="check"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M4 12l5 5L20 6" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <h1>Vaga recebida!</h1>
         <p>Obrigado. Sua vaga entra na fila do boletim diário do Jornal das Vagas — vamos avisar quando ela for ao ar.</p>
+        <p><a href="vagas.html" style="color:#0d2f4f;font-weight:600">Ver as vagas no mural</a> &nbsp;·&nbsp; <a href="vaga-empresa.html" style="color:#0d2f4f;font-weight:600">Cadastrar outra vaga</a></p>
       </div>`;
   }catch(e){
     btn.disabled = false;
