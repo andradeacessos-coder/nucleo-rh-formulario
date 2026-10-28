@@ -112,7 +112,8 @@ function cardPub(p){
   return `<div class="card"><h3>${esc(p.cargo)} — ${esc(p.empresa)}</h3>
     <div class="meta">${esc(p.area||'')} · ${esc(p.local||'')} · ${p.tipo==='externa'?'externa ('+esc(p.fonte||'')+')':'empresa'}
     <span class="pill ${p.ativa?'g':''}">${p.ativa?'no mural':'oculta'}</span></div>
-    <div class="row"><button class="btn gr" onclick="alternar('${p.id}',${!p.ativa})">${p.ativa?'Tirar do mural':'Voltar ao mural'}</button></div></div>`;
+    <div class="row"><button class="btn gr" onclick="alternar('${p.id}',${!p.ativa})">${p.ativa?'Tirar do mural':'Voltar ao mural'}</button>
+    <button class="btn no" onclick="apagar('vagasPublicas','${p.id}','esta vaga do mural')">Apagar</button></div></div>`;
 }
 const FONTES = [
   ['LinkedIn','https://www.linkedin.com/jobs/search/?location=Salin%C3%B3polis%2C%20Par%C3%A1%2C%20Brasil&f_TPR=r86400'],
@@ -142,11 +143,16 @@ function cardCand(c){
   return `<div class="card"><h3>${esc(c.nome)} <span class="pill ${c.status==='nova'?'g':''}">${esc(c.status||'')}</span></h3>
   <div class="meta">Vaga: <b>${esc(c.cargo)}</b> — ${esc(c.empresa)}<br>WhatsApp: <a href="${wa(c.whatsapp)}" target="_blank" rel="noopener">${esc(c.whatsapp)}</a><br>${esc(c.mensagem||'')}</div>
   <div class="row"><a class="btn nv" href="${wa(c.whatsapp)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>
-  <button class="btn gr" onclick="statusCand('${c.id}','contatado')">Marcar contatado</button></div></div>`;
+  <button class="btn gr" onclick="statusCand('${c.id}','contatado')">Marcar contatado</button>
+  <button class="btn ok" onclick="statusCand('${c.id}','aprovado')">Aprovar</button>
+  <button class="btn no" onclick="statusCand('${c.id}','recusado')">Recusar</button>
+  <button class="btn no" onclick="apagar('candidaturas','${c.id}','esta candidatura')">Apagar</button></div></div>`;
 }
 function cardTal(t){
   return `<div class="card"><h3>${esc(t.nome)}</h3><div class="meta">${esc(t.bairro||'')} · ${(t.areas||[]).map(esc).join(', ')||'sem áreas'}<br>
-  <a href="${wa(t.whatsapp)}" target="_blank" rel="noopener">${esc(t.whatsapp)}</a></div></div>`;
+  <a href="${wa(t.whatsapp)}" target="_blank" rel="noopener">${esc(t.whatsapp)}</a></div>
+  <div class="row"><a class="btn nv" href="${wa(t.whatsapp)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>
+  <button class="btn no" onclick="apagar('talentos','${t.id}','este currículo')">Apagar</button></div></div>`;
 }
 
 async function aprovar(id){
@@ -161,6 +167,11 @@ async function rejeitar(id){ if(!confirm('Rejeitar esta vaga? Ela não irá ao m
   await db.collection('vagasEmpresas').doc(id).update({rejeitada:true}); await recarregar(); }
 async function alternar(id,ativa){ await db.collection('vagasPublicas').doc(id).update({ativa}); await recarregar(); }
 async function statusCand(id,status){ await db.collection('candidaturas').doc(id).update({status}); await recarregar(); }
+async function apagar(colecao,id,rotulo){
+  if(!confirm('Apagar ' + rotulo + '? Isso não pode ser desfeito.')) return;
+  try{ await db.collection(colecao).doc(id).delete(); await recarregar(); }
+  catch(e){ alert('Não foi possível apagar: ' + e.message); }
+}
 async function salvarExterna(){
   const g = i => document.getElementById(i).value.trim();
   let url = g('e_url');
