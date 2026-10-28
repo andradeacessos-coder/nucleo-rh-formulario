@@ -115,6 +115,10 @@ function cardPub(p){
   return `<div class="card"><h3>${esc(p.cargo)} — ${esc(p.empresa)}</h3>
     <div class="meta">${esc(p.area||'')} · ${esc(p.local||'')} · ${p.tipo==='externa'?'externa ('+esc(p.fonte||'')+')':'empresa'}
     <span class="pill ${p.ativa?'g':''}">${p.ativa?'no mural':'oculta'}</span></div>
+    ${p.tipo==='externa' ? `<label>Link da vaga (para onde o botão leva)</label>
+    <input id="u_${p.id}" value="${esc(p.url||'')}">
+    <div class="row" style="margin-top:6px"><button class="btn nv" onclick="salvarUrl('${p.id}')">Salvar link</button>
+    <a class="btn gr" href="${esc(p.url||'#')}" target="_blank" rel="noopener">Testar link</a></div>` : ''}
     <div class="row"><button class="btn gr" onclick="alternar('${p.id}',${!p.ativa})">${p.ativa?'Tirar do mural':'Voltar ao mural'}</button>
     <button class="btn no" onclick="apagar('vagasPublicas','${p.id}','esta vaga do mural')">Apagar</button></div></div>`;
 }
@@ -137,6 +141,10 @@ function formExterna(){
   <div><label>Área</label><select id="e_area">${AREAS.map(a=>`<option>${a}</option>`).join('')}</select></div><div><label>Local</label><input id="e_loc" value="Salinópolis"></div></div>
   <label>Texto do cartão (curto)</label><textarea id="e_resumo" maxlength="220"></textarea>
   <div class="row"><button class="btn ok" onclick="salvarExterna()">Publicar no mural</button></div><div class="err" id="e_err"></div></div>
+  <div class="card"><h3>Atualizar links em lote</h3>
+  <p class="meta">Uma vaga por linha, no formato <code>parte do cargo => link</code>. Só muda vagas de outros sites, e só quando o texto encontra uma vaga única.</p>
+  <textarea id="lk_txt" style="min-height:110px;font-family:monospace;font-size:12px" placeholder="Motorista => https://..."></textarea>
+  <div class="row"><button class="btn nv" onclick="atualizarLinks()">Atualizar links</button></div><div class="err" id="lk_out"></div></div>
   <div class="card"><h3>Importar lote (JSON)</h3>
   <p class="meta">Cole uma lista de vagas no formato do arquivo <b>vagas-lote.json</b>. Cada item vira um cartão no mural. Itens com <code>"ativa": false</code> entram ocultos.</p>
   <textarea id="lote" style="min-height:120px;font-family:monospace;font-size:12px"></textarea>
@@ -219,6 +227,28 @@ async function salvarExterna(){
   if(!g('e_cargo')||!g('e_emp')||!/^https?:\/\//i.test(url)){ document.getElementById('e_err').textContent='Preencha cargo, empresa e um link que comece com http(s)://'; return; }
   await db.collection('vagasPublicas').add({tipo:'externa',cargo:g('e_cargo'),empresa:g('e_emp'),fonte:g('e_fonte'),url,area:g('e_area'),local:g('e_loc'),resumo:g('e_resumo'),ativa:true,criadoEm:new Date().toISOString()});
   aba='publicas'; await recarregar();
+}
+async function salvarUrl(id){
+  const url = document.getElementById('u_'+id).value.trim();
+  if(!/^https?:\/\//i.test(url)){ alert('O link precisa começar com http:// ou https://'); return; }
+  await db.collection('vagasPublicas').doc(id).update({url}); await recarregar();
+}
+const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+async function atualizarLinks(){
+  const out = document.getElementById('lk_out'); out.textContent = ''; out.style.color = '';
+  const linhas = document.getElementById('lk_txt').value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const relatorio = []; let batch = db.batch(), n = 0;
+  for(const l of linhas){
+    const m = l.match(/^(.+?)\s*(?:=>|\||\t)\s*(https?:\/\/\S+)$/i);
+    if(!m){ relatorio.push('✗ formato inválido: ' + l.slice(0,60)); continue; }
+    const achadas = dados.publicas.filter(p => p.tipo==='externa' && norm(p.cargo).includes(norm(m[1])));
+    if(achadas.length!==1){ relatorio.push('✗ "' + m[1] + '": ' + (achadas.length ? achadas.length + ' vagas parecidas, seja mais específico' : 'nenhuma vaga encontrada')); continue; }
+    batch.update(db.collection('vagasPublicas').doc(achadas[0].id), {url:m[2]}); n++;
+    relatorio.push('✓ ' + achadas[0].cargo + ' — ' + achadas[0].empresa);
+  }
+  if(n) await batch.commit();
+  out.textContent = relatorio.join('\n'); out.style.whiteSpace = 'pre-wrap';
+  if(n) await carregar();
 }
 async function importarLote(){
   const err = document.getElementById('lote_err'); err.textContent='';
