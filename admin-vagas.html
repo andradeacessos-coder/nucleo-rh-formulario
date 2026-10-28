@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin — Jornal das Vagas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0d2f4f;--red:#c8102e;--green:#2f7a4f;--paper:#f3f6f9;--card:#fff;--ink:#1c2530;--soft:#51606f;--line:#d7dee6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,sans-serif}
+h1,h2,h3{font-family:'Poppins',sans-serif;margin:0}
+.bar{background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:4px solid var(--red)}
+.bar b{font-family:'Poppins',sans-serif;font-size:16px;flex:1}
+.bar button{background:transparent;border:1px solid #fff6;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit;font-size:13px}
+.wrap{max-width:980px;margin:0 auto;padding:16px 14px 70px}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:4px}
+.tab{flex:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 15px;font:600 13px 'Inter';cursor:pointer;white-space:nowrap}
+.tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.tab i{font-style:normal;background:var(--red);color:#fff;border-radius:99px;padding:1px 7px;margin-left:6px;font-size:11px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.card h3{font-size:16px;color:var(--navy)}
+.meta{font-size:13px;color:var(--soft);margin:4px 0 8px;line-height:1.5}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:12px;font-weight:600;margin:0 0 3px;color:var(--soft)}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:15px;background:#fff;color:var(--ink)}
+textarea{min-height:64px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{border:0;border-radius:9px;padding:11px 16px;font:600 14px 'Inter';cursor:pointer;min-height:44px;text-decoration:none;display:inline-flex;align-items:center}
+.ok{background:var(--green);color:#fff}.no{background:#fbe6e2;color:#a8362a}.nv{background:var(--navy);color:#fff}.gr{background:#e8edf2;color:var(--ink)}
+.pill{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;background:#e8edf2;color:var(--soft)}
+.pill.g{background:#e4f4ea;color:#1f6a3e}
+.vazio{text-align:center;color:var(--soft);padding:30px 10px}
+.login{max-width:360px;margin:60px auto;padding:0 16px}
+.err{color:#a8362a;font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyA7rFUD3m1f1V2YweXBD9EK64zWbsr3xto",
+  authDomain:"nucleo-rh-formulario.firebaseapp.com",
+  projectId:"nucleo-rh-formulario",
+  storageBucket:"nucleo-rh-formulario.firebasestorage.app",
+  messagingSenderId:"974168561725",
+  appId:"1:974168561725:web:c81faec29092639d973254"
+});
+const auth = firebase.auth(), db = firebase.firestore();
+const AREAS = ['Hotelaria','Gastronomia','Comércio','Praia/Quiosque','Limpeza','Construção','Administrativo','Saúde','Transporte','Serviços técnicos'];
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const app = document.getElementById('app');
+let aba = 'pendentes', dados = {vagas:[], publicas:[], cands:[], talentos:[]};
+
+function login(msg){
+  app.innerHTML = `<div class="login card"><h2>Admin — Jornal das Vagas</h2>
+    <p class="meta">Entre com a conta de administrador do Núcleo RH.</p>
+    <label>E-mail</label><input id="lm" type="email" autocomplete="username">
+    <label style="margin-top:10px">Senha</label><input id="ls" type="password" autocomplete="current-password">
+    <div class="row"><button class="btn nv" id="lb" style="width:100%;justify-content:center">Entrar</button></div>
+    <div class="err">${esc(msg||'')}</div></div>`;
+  const go = async () => {
+    try{ await auth.signInWithEmailAndPassword(lm.value.trim(), ls.value); }
+    catch(e){ login('E-mail ou senha incorretos.'); }
+  };
+  lb.onclick = go; ls.onkeydown = e => { if(e.key==='Enter') go(); };
+}
+
+async function carregar(){
+  const q = c => db.collection(c).orderBy('criadoEm','desc').limit(200).get().then(s=>s.docs.map(d=>({id:d.id,...d.data()})));
+  const [vagas,cands,talentos,pub] = await Promise.all([
+    q('vagasEmpresas'), q('candidaturas'), q('talentos'),
+    db.collection('vagasPublicas').limit(200).get().then(s=>s.docs.map(d=>({id:d.id,...d.data()})))
+  ]);
+  dados = {vagas,cands,talentos,publicas:pub};
+}
+
+function tela(){
+  const pend = dados.vagas.filter(v => !v.aprovada && !v.rejeitada);
+  const tabs = [['pendentes','Vagas pendentes',pend.length],['publicas','No mural',dados.publicas.filter(p=>p.ativa).length],
+                ['externa','🔎 Curadoria / outro site',0],['cands','Candidaturas',dados.cands.filter(c=>c.status==='nova').length],['talentos','Talentos',dados.talentos.length]];
+  app.innerHTML = `<div class="bar"><b>Jornal das Vagas · Admin</b><button onclick="auth.signOut()">Sair</button></div>
+  <div class="wrap"><div class="tabs">${tabs.map(([k,n,c])=>`<button class="tab ${k===aba?'on':''}" onclick="aba='${k}';tela()">${n}${c?`<i>${c}</i>`:''}</button>`).join('')}</div><div id="corpo"></div></div>`;
+  const corpo = document.getElementById('corpo');
+  if(aba==='pendentes') corpo.innerHTML = pend.length ? pend.map(cardPend).join('') : '<div class="vazio">Nenhuma vaga aguardando aprovação.</div>';
+  if(aba==='publicas') corpo.innerHTML = dados.publicas.length ? dados.publicas.map(cardPub).join('') : '<div class="vazio">Mural vazio.</div>';
+  if(aba==='externa') corpo.innerHTML = formExterna();
+  if(aba==='cands') corpo.innerHTML = dados.cands.length ? dados.cands.map(cardCand).join('') : '<div class="vazio">Sem candidaturas.</div>';
+  if(aba==='talentos') corpo.innerHTML = dados.talentos.length ? dados.talentos.map(cardTal).join('') : '<div class="vazio">Sem currículos.</div>';
+}
+
+const wa = n => 'https://wa.me/55' + String(n||'').replace(/\D/g,'').replace(/^55/,'');
+function cardPend(v){
+  const resumo = (v.requisitos||'').replace(/\s+/g,' ').slice(0,200);
+  return `<div class="card" id="p_${v.id}"><h3>${esc(v.cargo)} — ${esc(v.empresa)}</h3>
+    <div class="meta">${esc(v.tipoVinculo||'')} · ${esc(v.salario||'salário não informado')} · ${esc(v.cidade||'')}<br>
+    Contato (<b>não aparece no mural</b>): ${esc(v.contatoNome||'')} · <a href="${wa(v.contatoWhats)}" target="_blank" rel="noopener">${esc(v.contatoWhats||'')}</a></div>
+    <label>Requisitos enviados pela empresa</label><div class="meta">${esc(v.requisitos||'')}</div>
+    <div class="grid"><div><label>Área no mural</label><select id="a_${v.id}">${AREAS.map(a=>`<option>${a}</option>`).join('')}</select></div>
+    <div><label>Local</label><input id="l_${v.id}" value="${esc(v.cidade||'Salinópolis')}"></div></div>
+    <label>Texto do cartão (curto, sem telefone)</label><textarea id="r_${v.id}" maxlength="220">${esc(resumo)}</textarea>
+    <div class="row"><button class="btn ok" onclick="aprovar('${v.id}')">Aprovar e publicar</button>
+    <button class="btn no" onclick="rejeitar('${v.id}')">Rejeitar</button></div></div>`;
+}
+function cardPub(p){
+  return `<div class="card"><h3>${esc(p.cargo)} — ${esc(p.empresa)}</h3>
+    <div class="meta">${esc(p.area||'')} · ${esc(p.local||'')} · ${p.tipo==='externa'?'externa ('+esc(p.fonte||'')+')':'empresa'}
+    <span class="pill ${p.ativa?'g':''}">${p.ativa?'no mural':'oculta'}</span></div>
+    <div class="row"><button class="btn gr" onclick="alternar('${p.id}',${!p.ativa})">${p.ativa?'Tirar do mural':'Voltar ao mural'}</button></div></div>`;
+}
+const FONTES = [
+  ['LinkedIn','https://www.linkedin.com/jobs/search/?location=Salin%C3%B3polis%2C%20Par%C3%A1%2C%20Brasil&f_TPR=r86400'],
+  ['Catho','https://www.catho.com.br/vagas/salinopolis-pa/'],
+  ['InfoJobs','https://www.infojobs.com.br/vagas-de-emprego-salinopolis-pa.aspx']
+];
+function abrirTodas(){ FONTES.forEach(([,u]) => window.open(u,'_blank','noopener')); }
+function formExterna(){
+  return `<div class="card"><h3>Curadoria manual — abrir portais</h3>
+  <p class="meta">Pesquise como pessoa normal, em Salinópolis (LinkedIn: últimas 24 h). Copie os links das vagas boas e cadastre abaixo, ou mande as capturas de tela no chat para o Claude separar.</p>
+  <div class="row">${FONTES.map(([n,u])=>`<a class="btn nv" href="${u}" target="_blank" rel="noopener">${n}</a>`).join('')}
+  <button class="btn gr" onclick="abrirTodas()">Abrir as 3</button></div>
+  <p class="meta" style="margin-top:8px">Se o navegador bloquear a abertura das 3, libere pop-ups para este endereço.</p></div>
+  <div class="card"><h3>Vaga de outro site (com link original)</h3>
+  <p class="meta">Você viu a vaga no LinkedIn, Catho, InfoJobs etc. como pessoa normal? Cole aqui o link. O mural mostra só o cargo e o link para a fonte.</p>
+  <div class="grid"><div><label>Cargo</label><input id="e_cargo"></div><div><label>Empresa</label><input id="e_emp"></div>
+  <div><label>Fonte (nome do site)</label><input id="e_fonte" placeholder="Ex.: Trabalha Brasil"></div><div><label>Link da vaga original</label><input id="e_url" type="url" placeholder="https://"></div>
+  <div><label>Área</label><select id="e_area">${AREAS.map(a=>`<option>${a}</option>`).join('')}</select></div><div><label>Local</label><input id="e_loc" value="Salinópolis"></div></div>
+  <label>Texto do cartão (curto)</label><textarea id="e_resumo" maxlength="220"></textarea>
+  <div class="row"><button class="btn ok" onclick="salvarExterna()">Publicar no mural</button></div><div class="err" id="e_err"></div></div>
+  <div class="card"><h3>Importar lote (JSON)</h3>
+  <p class="meta">Cole uma lista de vagas no formato do arquivo <b>vagas-lote.json</b>. Cada item vira um cartão no mural. Itens com <code>"ativa": false</code> entram ocultos.</p>
+  <textarea id="lote" style="min-height:120px;font-family:monospace;font-size:12px"></textarea>
+  <div class="row"><button class="btn nv" onclick="importarLote()">Importar</button></div><div class="err" id="lote_err"></div></div>`;
+}
+function cardCand(c){
+  return `<div class="card"><h3>${esc(c.nome)} <span class="pill ${c.status==='nova'?'g':''}">${esc(c.status||'')}</span></h3>
+  <div class="meta">Vaga: <b>${esc(c.cargo)}</b> — ${esc(c.empresa)}<br>WhatsApp: <a href="${wa(c.whatsapp)}" target="_blank" rel="noopener">${esc(c.whatsapp)}</a><br>${esc(c.mensagem||'')}</div>
+  <div class="row"><a class="btn nv" href="${wa(c.whatsapp)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>
+  <button class="btn gr" onclick="statusCand('${c.id}','contatado')">Marcar contatado</button></div></div>`;
+}
+function cardTal(t){
+  return `<div class="card"><h3>${esc(t.nome)}</h3><div class="meta">${esc(t.bairro||'')} · ${(t.areas||[]).map(esc).join(', ')||'sem áreas'}<br>
+  <a href="${wa(t.whatsapp)}" target="_blank" rel="noopener">${esc(t.whatsapp)}</a></div></div>`;
+}
+
+async function aprovar(id){
+  const v = dados.vagas.find(x=>x.id===id);
+  const area = document.getElementById('a_'+id).value, local = document.getElementById('l_'+id).value.trim(), resumo = document.getElementById('r_'+id).value.trim();
+  const batch = db.batch();
+  batch.set(db.collection('vagasPublicas').doc(id), {tipo:'empresa',cargo:v.cargo,empresa:v.empresa,area,local,resumo,ativa:true,origemId:id,aprovadoEm:new Date().toISOString(),criadoEm:new Date().toISOString()});
+  batch.update(db.collection('vagasEmpresas').doc(id), {aprovada:true});
+  await batch.commit(); await recarregar();
+}
+async function rejeitar(id){ if(!confirm('Rejeitar esta vaga? Ela não irá ao mural.')) return;
+  await db.collection('vagasEmpresas').doc(id).update({rejeitada:true}); await recarregar(); }
+async function alternar(id,ativa){ await db.collection('vagasPublicas').doc(id).update({ativa}); await recarregar(); }
+async function statusCand(id,status){ await db.collection('candidaturas').doc(id).update({status}); await recarregar(); }
+async function salvarExterna(){
+  const g = i => document.getElementById(i).value.trim();
+  let url = g('e_url');
+  if(!g('e_cargo')||!g('e_emp')||!/^https?:\/\//i.test(url)){ document.getElementById('e_err').textContent='Preencha cargo, empresa e um link que comece com http(s)://'; return; }
+  await db.collection('vagasPublicas').add({tipo:'externa',cargo:g('e_cargo'),empresa:g('e_emp'),fonte:g('e_fonte'),url,area:g('e_area'),local:g('e_loc'),resumo:g('e_resumo'),ativa:true,criadoEm:new Date().toISOString()});
+  aba='publicas'; await recarregar();
+}
+async function importarLote(){
+  const err = document.getElementById('lote_err'); err.textContent='';
+  let lista;
+  try{ lista = JSON.parse(document.getElementById('lote').value); if(!Array.isArray(lista)) throw 0; }
+  catch(e){ err.textContent='JSON inválido. Cole a lista inteira, começando em [ e terminando em ].'; return; }
+  const ruins = lista.filter(v => !v.cargo || !v.empresa || !/^https?:\/\//i.test(v.url||''));
+  if(ruins.length){ err.textContent = ruins.length + ' item(ns) sem cargo, empresa ou link http(s). Nada foi importado.'; return; }
+  if(!confirm('Importar ' + lista.length + ' vaga(s) para o mural?')) return;
+  const agora = new Date().toISOString();
+  const batch = db.batch();
+  lista.forEach(v => batch.set(db.collection('vagasPublicas').doc(), {
+    tipo:'externa', cargo:String(v.cargo).slice(0,120), empresa:String(v.empresa).slice(0,120), fonte:String(v.fonte||'').slice(0,80),
+    url:v.url, area:v.area||'', local:v.local||'Salinópolis', resumo:String(v.resumo||'').slice(0,220), ativa:v.ativa!==false, criadoEm:agora }));
+  await batch.commit(); aba='publicas'; await recarregar();
+}
+async function recarregar(){ await carregar(); tela(); }
+
+auth.onAuthStateChanged(async u => {
+  if(!u){ login(); return; }
+  app.innerHTML = '<div class="vazio">Carregando…</div>';
+  try{ await carregar(); tela(); }
+  catch(e){ app.innerHTML = `<div class="login card"><h3>Sem permissão</h3><p class="meta">Esta conta não tem acesso de administrador.</p><button class="btn nv" onclick="auth.signOut()">Sair</button></div>`; }
+});
+</script>
+</body>
+</html>
