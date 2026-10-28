@@ -91,8 +91,11 @@ function tela(){
   if(aba==='pendentes') corpo.innerHTML = pend.length ? pend.map(cardPend).join('') : '<div class="vazio">Nenhuma vaga aguardando aprovação.</div>';
   if(aba==='publicas') corpo.innerHTML = dados.publicas.length ? dados.publicas.map(cardPub).join('') : '<div class="vazio">Mural vazio.</div>';
   if(aba==='externa') corpo.innerHTML = formExterna();
-  if(aba==='cands') corpo.innerHTML = dados.cands.length ? dados.cands.map(cardCand).join('') : '<div class="vazio">Sem candidaturas.</div>';
-  if(aba==='talentos') corpo.innerHTML = dados.talentos.length ? dados.talentos.map(cardTal).join('') : '<div class="vazio">Sem currículos.</div>';
+  if(aba==='cands'){
+    const lista = candsFiltradas();
+    corpo.innerHTML = barraCands(lista.length) + (lista.length ? lista.map(cardCand).join('') : '<div class="vazio">Nenhuma candidatura neste filtro.</div>');
+  }
+  if(aba==='talentos') corpo.innerHTML = barraTalentos() + (dados.talentos.length ? dados.talentos.map(cardTal).join('') : '<div class="vazio">Sem currículos.</div>');
 }
 
 const wa = n => 'https://wa.me/55' + String(n||'').replace(/\D/g,'').replace(/^55/,'');
@@ -166,6 +169,43 @@ async function aprovar(id){
 async function rejeitar(id){ if(!confirm('Rejeitar esta vaga? Ela não irá ao mural.')) return;
   await db.collection('vagasEmpresas').doc(id).update({rejeitada:true}); await recarregar(); }
 async function alternar(id,ativa){ await db.collection('vagasPublicas').doc(id).update({ativa}); await recarregar(); }
+/* ===== Planilha (CSV) ===== */
+let candFiltro = 'todos';
+const candsFiltradas = () => dados.cands.filter(c => candFiltro==='todos' || (c.status||'nova')===candFiltro);
+function barraCands(n){
+  const op = ['todos','nova','contatado','aprovado','recusado'];
+  return `<div class="card"><div class="grid"><div><label>Mostrar candidaturas</label>
+    <select onchange="candFiltro=this.value;tela()">${op.map(o=>`<option value="${o}" ${o===candFiltro?'selected':''}>${o==='todos'?'Todas':o}</option>`).join('')}</select></div>
+    <div><label>${n} candidatura(s) neste filtro</label><button class="btn nv" style="width:100%;justify-content:center" onclick="baixarCands()">⬇ Baixar planilha (CSV)</button></div></div>
+    <p class="meta" style="margin:0">A planilha traz a <b>área da vaga</b>, o status e os dados do candidato. Abra no Excel ou no Google Planilhas e use filtros por coluna.</p></div>`;
+}
+function barraTalentos(){
+  return `<div class="card"><div class="row" style="margin:0;align-items:center"><button class="btn nv" onclick="baixarTalentos()">⬇ Baixar planilha de currículos (CSV)</button>
+    <span class="meta" style="margin:0">${dados.talentos.length} currículo(s)</span></div></div>`;
+}
+const fmtData = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}); };
+function celula(v){
+  let s = String(v==null?'':v).replace(/\r?\n/g,' ').trim();
+  if(/^[=+\-@]/.test(s)) s = "'" + s;           // evita fórmulas injetadas no Excel
+  return '"' + s.replace(/"/g,'""') + '"';
+}
+function baixarCsv(nome, cabecalho, linhas){
+  const csv = '﻿' + [cabecalho, ...linhas].map(l => l.map(celula).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = nome + '-' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function baixarCands(){
+  const areaDaVaga = id => (dados.publicas.find(p=>p.id===id)||{}).area || '';
+  const linhas = candsFiltradas().map(c => [fmtData(c.criadoEm), c.cargo, c.empresa, areaDaVaga(c.vagaId), c.nome, c.whatsapp, c.mensagem||'', c.status||'nova']);
+  baixarCsv('candidaturas', ['Data','Vaga','Empresa','Área da vaga','Nome','WhatsApp','Mensagem','Status'], linhas);
+}
+function baixarTalentos(){
+  const linhas = dados.talentos.map(t => [fmtData(t.criadoEm), t.nome, t.whatsapp, t.bairro||'', (t.areas||[]).join(', '), t.origem||'']);
+  baixarCsv('curriculos', ['Data','Nome','WhatsApp','Bairro','Áreas de interesse','Origem'], linhas);
+}
+
 async function statusCand(id,status){ await db.collection('candidaturas').doc(id).update({status}); await recarregar(); }
 async function apagar(colecao,id,rotulo){
   if(!confirm('Apagar ' + rotulo + '? Isso não pode ser desfeito.')) return;
