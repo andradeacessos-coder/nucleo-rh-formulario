@@ -152,7 +152,7 @@ function cardCand(c){
   <button class="btn no" onclick="apagar('candidaturas','${c.id}','esta candidatura')">Apagar</button></div></div>`;
 }
 function cardTal(t){
-  return `<div class="card"><h3>${esc(t.nome)}</h3><div class="meta">${esc(t.bairro||'')} · ${(t.areas||[]).map(esc).join(', ')||'sem áreas'}<br>
+  return `<div class="card"><h3>${esc(t.nome)}</h3><div class="meta"><b>${esc(profTalento(t)||'profissão não informada')}</b><br>${esc(t.bairro||'')} · ${(t.areas||[]).map(esc).join(', ')||'sem áreas'}<br>
   <a href="${wa(t.whatsapp)}" target="_blank" rel="noopener">${esc(t.whatsapp)}</a></div>
   <div class="row"><a class="btn nv" href="${wa(t.whatsapp)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>
   <button class="btn no" onclick="apagar('talentos','${t.id}','este currículo')">Apagar</button></div></div>`;
@@ -201,9 +201,10 @@ function baixarCands(){
   const linhas = candsFiltradas().map(c => [fmtData(c.criadoEm), c.cargo, c.empresa, areaDaVaga(c.vagaId), c.nome, c.whatsapp, c.mensagem||'', c.status||'nova']);
   baixarCsv('candidaturas', ['Data','Vaga','Empresa','Área da vaga','Nome','WhatsApp','Mensagem','Status'], linhas);
 }
+const profTalento = t => t.profissao === 'Outros' ? ('Outros: ' + (t.profissaoOutra||'')) : (t.profissao||'');
 function baixarTalentos(){
-  const linhas = dados.talentos.map(t => [fmtData(t.criadoEm), t.nome, t.whatsapp, t.bairro||'', (t.areas||[]).join(', '), t.origem||'']);
-  baixarCsv('curriculos', ['Data','Nome','WhatsApp','Bairro','Áreas de interesse','Origem'], linhas);
+  const linhas = dados.talentos.map(t => [fmtData(t.criadoEm), t.nome, t.whatsapp, t.bairro||'', profTalento(t), (t.areas||[]).join(', '), t.origem||'']);
+  baixarCsv('curriculos', ['Data','Nome','WhatsApp','Bairro','Profissão','Áreas de interesse','Origem'], linhas);
 }
 
 async function statusCand(id,status){ await db.collection('candidaturas').doc(id).update({status}); await recarregar(); }
